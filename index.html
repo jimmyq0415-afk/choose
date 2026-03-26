@@ -373,7 +373,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'two_stage_selector_fixed_v1';
+    const STORAGE_KEY = 'two_stage_selector_fixed_v3';
     const DISPLAY_ROW_ID = 1;
     const params = new URLSearchParams(location.search);
     const isDisplayMode = params.get('mode') === 'display';
@@ -396,6 +396,7 @@
     let state = loadState();
     let supabaseClient = null;
     let realtimeChannel = null;
+    let displayPollTimer = null;
 
     function loadState() {
       try {
@@ -557,16 +558,17 @@
         return;
       }
       const payload = {
-        id: DISPLAY_ROW_ID,
         submitted: true,
         first_choice: state.stage1Items[state.selectedStage1],
         second_choice: state.stage2Items[state.selectedStage2],
         updated_at: new Date().toISOString()
       };
-      const { error } = await client.from('live_selection').upsert(payload, { onConflict: 'id' });
-      if (error) {
-        console.error(error);
-        setStatus('送出失敗，請確認 SQL 已成功執行，且資料表為 live_selection。');
+      let error = null;
+      const result = await client.from('live_selection').update(payload).eq('id', DISPLAY_ROW_ID).select();
+      error = result.error;
+      if (error || !result.data || result.data.length === 0) {
+        console.error(error || 'no row updated');
+        setStatus('送出失敗，請先到 Supabase 執行新版 SQL。');
       } else {
         setStatus('已送出，投影端會同步顯示。');
       }
@@ -579,16 +581,17 @@
         return;
       }
       const payload = {
-        id: DISPLAY_ROW_ID,
         submitted: false,
         first_choice: '',
         second_choice: '',
         updated_at: new Date().toISOString()
       };
-      const { error } = await client.from('live_selection').upsert(payload, { onConflict: 'id' });
-      if (error) {
-        console.error(error);
-        setStatus('清空失敗，請確認資料表 live_selection 設定。');
+      let error = null;
+      const result = await client.from('live_selection').update(payload).eq('id', DISPLAY_ROW_ID).select();
+      error = result.error;
+      if (error || !result.data || result.data.length === 0) {
+        console.error(error || 'no row updated');
+        setStatus('清空失敗，請先到 Supabase 執行新版 SQL。');
       } else {
         setStatus('投影端已清空。');
       }
@@ -625,15 +628,9 @@
     }
 
     function subscribeDisplay() {
-      const client = initSupabase();
-      if (!client) return;
-      if (realtimeChannel) client.removeChannel(realtimeChannel);
-      realtimeChannel = client
-        .channel('live_selection_channel')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'live_selection' }, (payload) => {
-          paintDisplay(payload.new || null);
-        })
-        .subscribe();
+      if (displayPollTimer) clearInterval(displayPollTimer);
+      refreshDisplay();
+      displayPollTimer = setInterval(refreshDisplay, 1000);
     }
 
     function bindController() {
