@@ -326,12 +326,8 @@
       </div>
 
       <div class="editor-box" style="margin-bottom:16px;">
-        <div class="section-title">同步設定</div>
-        <div class="config-grid">
-          <input id="supabaseUrl" type="text" placeholder="Supabase URL" />
-          <input id="supabaseKey" type="text" placeholder="Supabase anon key" />
-        </div>
-        <div class="mini">同一組設定貼到控制端與投影端。投影端網址後面加上 <strong>?mode=display</strong> 就會變成純顯示畫面。</div>
+        <div class="section-title">投影使用方式</div>
+        <div class="mini">控制端直接開目前網址；投影端請在網址後面加上 <strong>?mode=display</strong>。送出前投影會維持空白，按下確認送出才會顯示內容。</div>
       </div>
 
       <div class="stage" id="stage1View">
@@ -368,17 +364,7 @@
   </div>
 
   <div class="display-body hidden" id="displayApp">
-    <div class="panel hidden" id="displayConfigPanel" style="max-width:760px; width:100%;">
-      <div class="section-title">同步設定</div>
-      <div class="subtle">這台裝置是投影端。第一次使用時，請貼上和控制端相同的 Supabase URL 與 anon key。</div>
-      <div class="config-grid" style="margin-top:14px;">
-        <input id="displaySupabaseUrl" type="text" placeholder="Supabase URL" />
-        <input id="displaySupabaseKey" type="text" placeholder="Supabase anon key" />
-      </div>
-      <div class="actions">
-        <button class="btn-primary" id="saveDisplayConfigBtn">儲存並開始顯示</button>
-      </div>
-    </div>
+    <div class="panel hidden" id="displayConfigPanel" style="max-width:760px; width:100%;"></div>
     <div class="display-empty" id="displayEmpty"></div>
     <div class="display-wrap hidden" id="displayWrap">
       <div class="display-card" id="displayFirst"></div>
@@ -387,14 +373,14 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'two_stage_selector_data_v1';
+    const STORAGE_KEY = 'two_stage_selector_fixed_v1';
     const DISPLAY_ROW_ID = 1;
     const params = new URLSearchParams(location.search);
     const isDisplayMode = params.get('mode') === 'display';
 
     const defaultData = {
-      supabaseUrl: '',
-      supabaseKey: '',
+      supabaseUrl: 'https://eiotatuvcusrvfsgocit.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpb3RhdHV2Y3VzcnZmc2dvY2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjYyMDYsImV4cCI6MjA5MDEwMjIwNn0.FUkFObCnbh69pnt3hQsQs161DCWfCIKf1aDIDGaEqqI',
       stage1Items: [
         '成員特徵範例：\n今天較安靜\n需要多一點提示',
         '成員特徵範例：\n願意回應\n可接受較長對話'
@@ -651,17 +637,21 @@
     }
 
     function bindController() {
-      document.getElementById('supabaseUrl').value = state.supabaseUrl;
-      document.getElementById('supabaseKey').value = state.supabaseKey;
+      const supabaseUrlInput = document.getElementById('supabaseUrl');
+      const supabaseKeyInput = document.getElementById('supabaseKey');
+      if (supabaseUrlInput && supabaseKeyInput) {
+        supabaseUrlInput.value = state.supabaseUrl;
+        supabaseKeyInput.value = state.supabaseKey;
 
-      document.getElementById('supabaseUrl').addEventListener('input', (e) => {
-        state.supabaseUrl = e.target.value.trim();
-        saveState();
-      });
-      document.getElementById('supabaseKey').addEventListener('input', (e) => {
-        state.supabaseKey = e.target.value.trim();
-        saveState();
-      });
+        supabaseUrlInput.addEventListener('input', (e) => {
+          state.supabaseUrl = e.target.value.trim();
+          saveState();
+        });
+        supabaseKeyInput.addEventListener('input', (e) => {
+          state.supabaseKey = e.target.value.trim();
+          saveState();
+        });
+      }
 
       document.getElementById('addStage1Btn').addEventListener('click', () => {
         state.stage1Items.push('新的第一格內容');
@@ -708,34 +698,16 @@
       const configPanel = document.getElementById('displayConfigPanel');
       const empty = document.getElementById('displayEmpty');
       const wrap = document.getElementById('displayWrap');
-      const urlInput = document.getElementById('displaySupabaseUrl');
-      const keyInput = document.getElementById('displaySupabaseKey');
-      const saveBtn = document.getElementById('saveDisplayConfigBtn');
 
       function startDisplay() {
-        configPanel.classList.add('hidden');
+        if (configPanel) configPanel.classList.add('hidden');
         empty.classList.remove('hidden');
         wrap.classList.add('hidden');
         refreshDisplay();
         subscribeDisplay();
       }
 
-      if (!state.supabaseUrl || !state.supabaseKey) {
-        configPanel.classList.remove('hidden');
-        empty.classList.add('hidden');
-        wrap.classList.add('hidden');
-      } else {
-        startDisplay();
-      }
-
-      urlInput.value = state.supabaseUrl || '';
-      keyInput.value = state.supabaseKey || '';
-      saveBtn.addEventListener('click', () => {
-        state.supabaseUrl = urlInput.value.trim();
-        state.supabaseKey = keyInput.value.trim();
-        saveState();
-        startDisplay();
-      });
+      startDisplay();
     }
 
     if (isDisplayMode) initDisplay();
