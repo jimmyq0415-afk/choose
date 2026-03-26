@@ -305,31 +305,6 @@
         </div>
       </div>
 
-      <div class="editor-grid">
-        <div class="editor-box">
-          <div class="section-title">第一格內容管理</div>
-          <div class="subtle">可自行新增、刪除、修改內容。顯示時會自動排成兩欄，適合文字較多的情況。</div>
-          <div class="list" id="stage1EditorList"></div>
-          <div class="actions">
-            <button class="btn-secondary" id="addStage1Btn">新增第一格</button>
-          </div>
-        </div>
-
-        <div class="editor-box">
-          <div class="section-title">第二格內容管理</div>
-          <div class="subtle">第二層也可獨立新增與編輯，治療師可依活動需要即時調整。</div>
-          <div class="list" id="stage2EditorList"></div>
-          <div class="actions">
-            <button class="btn-secondary" id="addStage2Btn">新增第二格</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="editor-box" style="margin-bottom:16px;">
-        <div class="section-title">投影使用方式</div>
-        <div class="mini">控制端直接開目前網址；投影端請在網址後面加上 <strong>?mode=display</strong>。送出前投影會維持空白，按下確認送出才會顯示內容。</div>
-      </div>
-
       <div class="stage" id="stage1View">
         <div class="section-title">選擇第一格</div>
         <div class="cards" id="stage1Cards"></div>
@@ -353,9 +328,34 @@
           </div>
         </div>
         <div class="actions">
+          <button class="btn-primary" id="sendBtnBottom">確認送出</button>
           <button class="btn-secondary" id="editFirstBtn">修改第一格</button>
           <button class="btn-secondary" id="editSecondBtn">修改第二格</button>
-          <button class="btn-primary" id="sendBtnBottom">確認送出</button>
+        </div>
+      </div>
+
+      <div class="editor-box" style="margin-top:16px; margin-bottom:16px;">
+        <div class="section-title">投影使用方式</div>
+        <div class="mini">控制端直接開目前網址；投影端請在網址後面加上 <strong>?mode=display</strong>。送出前投影會維持空白，按下確認送出才會顯示內容。</div>
+      </div>
+
+      <div class="editor-grid">
+        <div class="editor-box">
+          <div class="section-title">第一格內容管理</div>
+          <div class="subtle">可自行新增、刪除、修改內容。顯示時會自動排成兩欄，適合文字較多的情況。</div>
+          <div class="list" id="stage1EditorList"></div>
+          <div class="actions">
+            <button class="btn-secondary" id="addStage1Btn">新增第一格</button>
+          </div>
+        </div>
+
+        <div class="editor-box">
+          <div class="section-title">第二格內容管理</div>
+          <div class="subtle">第二層也可獨立新增與編輯，治療師可依活動需要即時調整。</div>
+          <div class="list" id="stage2EditorList"></div>
+          <div class="actions">
+            <button class="btn-secondary" id="addStage2Btn">新增第二格</button>
+          </div>
         </div>
       </div>
 
@@ -558,15 +558,15 @@
       }
       const payload = {
         id: DISPLAY_ROW_ID,
-        is_visible: true,
-        first_text: state.stage1Items[state.selectedStage1],
-        second_text: state.stage2Items[state.selectedStage2],
+        submitted: true,
+        first_choice: state.stage1Items[state.selectedStage1],
+        second_choice: state.stage2Items[state.selectedStage2],
         updated_at: new Date().toISOString()
       };
-      const { error } = await client.from('live_cards').upsert(payload, { onConflict: 'id' });
+      const { error } = await client.from('live_selection').upsert(payload, { onConflict: 'id' });
       if (error) {
         console.error(error);
-        setStatus('送出失敗，請確認 Supabase 資料表與權限設定。');
+        setStatus('送出失敗，請確認 SQL 已成功執行，且資料表為 live_selection。');
       } else {
         setStatus('已送出，投影端會同步顯示。');
       }
@@ -580,15 +580,15 @@
       }
       const payload = {
         id: DISPLAY_ROW_ID,
-        is_visible: false,
-        first_text: '',
-        second_text: '',
+        submitted: false,
+        first_choice: '',
+        second_choice: '',
         updated_at: new Date().toISOString()
       };
-      const { error } = await client.from('live_cards').upsert(payload, { onConflict: 'id' });
+      const { error } = await client.from('live_selection').upsert(payload, { onConflict: 'id' });
       if (error) {
         console.error(error);
-        setStatus('清空失敗，請確認資料表設定。');
+        setStatus('清空失敗，請確認資料表 live_selection 設定。');
       } else {
         setStatus('投影端已清空。');
       }
@@ -597,7 +597,7 @@
     async function refreshDisplay() {
       const client = initSupabase();
       if (!client) return;
-      const { data, error } = await client.from('live_cards').select('*').eq('id', DISPLAY_ROW_ID).maybeSingle();
+      const { data, error } = await client.from('live_selection').select('*').eq('id', DISPLAY_ROW_ID).maybeSingle();
       if (error) {
         console.error(error);
         return;
@@ -610,7 +610,7 @@
       const wrap = document.getElementById('displayWrap');
       const first = document.getElementById('displayFirst');
       const second = document.getElementById('displaySecond');
-      const visible = data && data.is_visible;
+      const visible = data && data.submitted;
       if (!visible) {
         empty.classList.remove('hidden');
         wrap.classList.add('hidden');
@@ -618,8 +618,8 @@
         second.textContent = '';
         return;
       }
-      first.textContent = data.first_text || '';
-      second.textContent = data.second_text || '';
+      first.textContent = data.first_choice || '';
+      second.textContent = data.second_choice || '';
       empty.classList.add('hidden');
       wrap.classList.remove('hidden');
     }
@@ -629,8 +629,8 @@
       if (!client) return;
       if (realtimeChannel) client.removeChannel(realtimeChannel);
       realtimeChannel = client
-        .channel('live_cards_channel')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'live_cards' }, (payload) => {
+        .channel('live_selection_channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'live_selection' }, (payload) => {
           paintDisplay(payload.new || null);
         })
         .subscribe();
