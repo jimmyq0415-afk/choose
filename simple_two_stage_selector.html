@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title> </title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #C5D0E2;
+      --panel: #A1B1CB;
+      --card: #ffffff;
+      --accent: #7D9EA6;
+      --deep: #465169;
+      --ink: #40010C;
+      --muted: #5c6780;
+      --shadow: 0 10px 30px rgba(70, 81, 105, 0.16);
+      --radius: 22px;
+      --gap: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: linear-gradient(180deg, #d8e0ed 0%, var(--bg) 100%);
+      color: var(--ink);
+      font-family: "PMingLiU", "MingLiU", "Songti TC", "Noto Serif TC", serif;
+    }
+
+    body {
+      padding: 16px;
+    }
+
+    .app {
+      max-width: 1220px;
+      margin: 0 auto;
+    }
+
+    .hidden { display: none !important; }
+
+    .panel {
+      background: rgba(255,255,255,0.58);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: none;
+      border-radius: 16px;
+      padding: 12px 18px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 8px 20px rgba(70, 81, 105, 0.12);
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .btn-primary { background: var(--deep); color: #fff; }
+    .btn-secondary { background: var(--panel); color: var(--ink); }
+    .btn-soft { background: #edf2fa; color: var(--deep); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-danger { background: #7d4b56; color: #fff; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+    }
+
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--deep);
+      margin: 0 0 14px;
+      letter-spacing: 0.02em;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .editor-box {
+      background: rgba(255,255,255,0.75);
+      border-radius: 22px;
+      padding: 16px;
+      border: 1px solid rgba(70,81,105,0.12);
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .item-edit {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      resize: vertical;
+      border-radius: 16px;
+      border: 1px solid rgba(70,81,105,0.18);
+      padding: 14px;
+      font-size: 17px;
+      line-height: 1.7;
+      font-family: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .stage {
+      margin-top: 16px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.92);
+      border: 2px solid transparent;
+      border-radius: var(--radius);
+      padding: 20px;
+      min-height: 170px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: left;
+      font-size: 24px;
+      line-height: 1.75;
+      color: var(--ink);
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .card:hover { border-color: var(--accent); }
+    .card.selected { border-color: var(--deep); background: #f4f7fc; }
+
+    .confirm-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+    .confirm-card {
+      background: rgba(255,255,255,0.92);
+      border-radius: 24px;
+      padding: 20px;
+      min-height: 220px;
+      box-shadow: var(--shadow);
+    }
+
+    .confirm-label {
+      font-size: 20px;
+      color: var(--deep);
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .confirm-text {
+      font-size: 24px;
+      line-height: 1.85;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .display-body {
+      min-height: calc(100vh - 32px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .display-empty {
+      width: 100%;
+      height: calc(100vh - 32px);
+      background: #fff;
+      border-radius: 30px;
+    }
+
+    .display-wrap {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 22px;
+    }
+
+    .display-card {
+      background: #fff;
+      border-radius: 30px;
+      padding: 40px;
+      box-shadow: var(--shadow);
+      min-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--ink);
+      font-size: clamp(30px, 4vw, 58px);
+      line-height: 1.75;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(70,81,105,0.18);
+      padding: 12px 14px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+
+    .mini {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 900px) {
+      .editor-grid, .confirm-wrap, .config-grid, .grid, .cards {
+        grid-template-columns: 1fr;
+      }
+      .card { font-size: 21px; min-height: 150px; }
+      .confirm-text { font-size: 21px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="controllerApp">
+    <div class="panel">
+      <div class="topbar">
+        <div class="chip-row">
+          <button class="btn-primary" id="showStage1Btn">第一格選擇</button>
+          <button class="btn-secondary" id="showStage2Btn">第二格選擇</button>
+          <button class="btn-soft" id="showConfirmBtn">確認畫面</button>
+        </div>
+        <div class="chip-row">
+          <button class="btn-accent" id="sendBtnTop">確認送出</button>
+          <button class="btn-danger" id="clearScreenBtn">清空投影</button>
+        </div>
+      </div>
+
+      <div class="editor-grid">
+        <div class="editor-box">
+          <div class="section-title">第一格內容管理</div>
+          <div class="subtle">可自行新增、刪除、修改內容。顯示時會自動排成兩欄，適合文字較多的情況。</div>
+          <div class="list" id="stage1EditorList"></div>
+          <div class="actions">
+            <button class="btn-secondary" id="addStage1Btn">新增第一格</button>
+          </div>
+        </div>
+
+        <div class="editor-box">
+          <div class="section-title">第二格內容管理</div>
+          <div class="subtle">第二層也可獨立新增與編輯，治療師可依活動需要即時調整。</div>
+          <div class="list" id="stage2EditorList"></div>
+          <div class="actions">
+            <button class="btn-secondary" id="addStage2Btn">新增第二格</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-box" style="margin-bottom:16px;">
+        <div class="section-title">同步設定</div>
+        <div class="config-grid">
+          <input id="supabaseUrl" type="text" placeholder="Supabase URL" />
+          <input id="supabaseKey" type="text" placeholder="Supabase anon key" />
+        </div>
+        <div class="mini">同一組設定貼到控制端與投影端。投影端網址後面加上 <strong>?mode=display</strong> 就會變成純顯示畫面。</div>
+      </div>
+
+      <div class="stage" id="stage1View">
+        <div class="section-title">選擇第一格</div>
+        <div class="cards" id="stage1Cards"></div>
+      </div>
+
+      <div class="stage hidden" id="stage2View">
+        <div class="section-title">選擇第二格</div>
+        <div class="cards" id="stage2Cards"></div>
+      </div>
+
+      <div class="stage hidden" id="confirmView">
+        <div class="section-title">確認內容</div>
+        <div class="confirm-wrap">
+          <div class="confirm-card">
+            <div class="confirm-label">第一格</div>
+            <div class="confirm-text" id="confirmFirst"></div>
+          </div>
+          <div class="confirm-card">
+            <div class="confirm-label">第二格</div>
+            <div class="confirm-text" id="confirmSecond"></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn-secondary" id="editFirstBtn">修改第一格</button>
+          <button class="btn-secondary" id="editSecondBtn">修改第二格</button>
+          <button class="btn-primary" id="sendBtnBottom">確認送出</button>
+        </div>
+      </div>
+
+      <div class="status" id="statusText">尚未送出任何內容。</div>
+    </div>
+  </div>
+
+  <div class="display-body hidden" id="displayApp">
+    <div class="panel hidden" id="displayConfigPanel" style="max-width:760px; width:100%;">
+      <div class="section-title">同步設定</div>
+      <div class="subtle">這台裝置是投影端。第一次使用時，請貼上和控制端相同的 Supabase URL 與 anon key。</div>
+      <div class="config-grid" style="margin-top:14px;">
+        <input id="displaySupabaseUrl" type="text" placeholder="Supabase URL" />
+        <input id="displaySupabaseKey" type="text" placeholder="Supabase anon key" />
+      </div>
+      <div class="actions">
+        <button class="btn-primary" id="saveDisplayConfigBtn">儲存並開始顯示</button>
+      </div>
+    </div>
+    <div class="display-empty" id="displayEmpty"></div>
+    <div class="display-wrap hidden" id="displayWrap">
+      <div class="display-card" id="displayFirst"></div>
+      <div class="display-card" id="displaySecond"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'two_stage_selector_data_v1';
+    const DISPLAY_ROW_ID = 1;
+    const params = new URLSearchParams(location.search);
+    const isDisplayMode = params.get('mode') === 'display';
+
+    const defaultData = {
+      supabaseUrl: '',
+      supabaseKey: '',
+      stage1Items: [
+        '成員特徵範例：\n今天較安靜\n需要多一點提示',
+        '成員特徵範例：\n願意回應\n可接受較長對話'
+      ],
+      stage2Items: [
+        '題目範例：\n最近一次和家人聊天的經驗',
+        '題目範例：\n今天活動中最有印象的事情'
+      ],
+      selectedStage1: null,
+      selectedStage2: null,
+    };
+
+    let state = loadState();
+    let supabaseClient = null;
+    let realtimeChannel = null;
+
+    function loadState() {
+      try {
+        return { ...defaultData, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') };
+      } catch {
+        return { ...defaultData };
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function setStatus(text) {
+      const el = document.getElementById('statusText');
+      if (el) el.textContent = text;
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function initSupabase() {
+      if (!state.supabaseUrl || !state.supabaseKey) return null;
+      try {
+        supabaseClient = window.supabase.createClient(state.supabaseUrl, state.supabaseKey);
+        return supabaseClient;
+      } catch (err) {
+        console.error(err);
+        return null;
+      }
+    }
+
+    function renderEditors() {
+      const stage1List = document.getElementById('stage1EditorList');
+      const stage2List = document.getElementById('stage2EditorList');
+      if (!stage1List || !stage2List) return;
+
+      stage1List.innerHTML = '';
+      stage2List.innerHTML = '';
+
+      state.stage1Items.forEach((item, index) => {
+        stage1List.appendChild(createEditorItem(item, index, 'stage1'));
+      });
+      state.stage2Items.forEach((item, index) => {
+        stage2List.appendChild(createEditorItem(item, index, 'stage2'));
+      });
+    }
+
+    function createEditorItem(value, index, type) {
+      const wrap = document.createElement('div');
+      wrap.className = 'item-edit';
+
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.placeholder = '請輸入內容';
+      textarea.addEventListener('input', (e) => {
+        if (type === 'stage1') state.stage1Items[index] = e.target.value;
+        else state.stage2Items[index] = e.target.value;
+        saveState();
+        renderCards();
+        renderConfirm();
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn-danger';
+      deleteBtn.textContent = '刪除';
+      deleteBtn.addEventListener('click', () => {
+        if (type === 'stage1') {
+          state.stage1Items.splice(index, 1);
+          if (state.selectedStage1 === index) state.selectedStage1 = null;
+          if (state.selectedStage1 > index) state.selectedStage1 -= 1;
+        } else {
+          state.stage2Items.splice(index, 1);
+          if (state.selectedStage2 === index) state.selectedStage2 = null;
+          if (state.selectedStage2 > index) state.selectedStage2 -= 1;
+        }
+        saveState();
+        renderAll();
+      });
+
+      wrap.appendChild(textarea);
+      wrap.appendChild(deleteBtn);
+      return wrap;
+    }
+
+    function renderCards() {
+      const stage1Cards = document.getElementById('stage1Cards');
+      const stage2Cards = document.getElementById('stage2Cards');
+      if (!stage1Cards || !stage2Cards) return;
+
+      stage1Cards.innerHTML = '';
+      stage2Cards.innerHTML = '';
+
+      state.stage1Items.forEach((item, index) => {
+        const card = document.createElement('button');
+        card.className = 'card' + (state.selectedStage1 === index ? ' selected' : '');
+        card.innerHTML = escapeHtml(item).replace(/\n/g, '<br>');
+        card.addEventListener('click', () => {
+          state.selectedStage1 = index;
+          saveState();
+          renderCards();
+          showView('stage2');
+        });
+        stage1Cards.appendChild(card);
+      });
+
+      state.stage2Items.forEach((item, index) => {
+        const card = document.createElement('button');
+        card.className = 'card' + (state.selectedStage2 === index ? ' selected' : '');
+        card.innerHTML = escapeHtml(item).replace(/\n/g, '<br>');
+        card.addEventListener('click', () => {
+          state.selectedStage2 = index;
+          saveState();
+          renderCards();
+          renderConfirm();
+          showView('confirm');
+        });
+        stage2Cards.appendChild(card);
+      });
+    }
+
+    function renderConfirm() {
+      const first = state.selectedStage1 != null ? state.stage1Items[state.selectedStage1] || '' : '尚未選擇';
+      const second = state.selectedStage2 != null ? state.stage2Items[state.selectedStage2] || '' : '尚未選擇';
+      const firstEl = document.getElementById('confirmFirst');
+      const secondEl = document.getElementById('confirmSecond');
+      if (firstEl) firstEl.textContent = first;
+      if (secondEl) secondEl.textContent = second;
+    }
+
+    function showView(which) {
+      const stage1View = document.getElementById('stage1View');
+      const stage2View = document.getElementById('stage2View');
+      const confirmView = document.getElementById('confirmView');
+
+      stage1View.classList.add('hidden');
+      stage2View.classList.add('hidden');
+      confirmView.classList.add('hidden');
+
+      if (which === 'stage1') stage1View.classList.remove('hidden');
+      if (which === 'stage2') stage2View.classList.remove('hidden');
+      if (which === 'confirm') confirmView.classList.remove('hidden');
+    }
+
+    async function sendSelection() {
+      if (state.selectedStage1 == null || state.selectedStage2 == null) {
+        setStatus('要先選完第一格和第二格，才能送出。');
+        return;
+      }
+      const client = initSupabase();
+      if (!client) {
+        setStatus('請先填入可用的 Supabase URL 與 anon key。');
+        return;
+      }
+      const payload = {
+        id: DISPLAY_ROW_ID,
+        is_visible: true,
+        first_text: state.stage1Items[state.selectedStage1],
+        second_text: state.stage2Items[state.selectedStage2],
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await client.from('live_cards').upsert(payload, { onConflict: 'id' });
+      if (error) {
+        console.error(error);
+        setStatus('送出失敗，請確認 Supabase 資料表與權限設定。');
+      } else {
+        setStatus('已送出，投影端會同步顯示。');
+      }
+    }
+
+    async function clearDisplay() {
+      const client = initSupabase();
+      if (!client) {
+        setStatus('請先填入可用的 Supabase URL 與 anon key。');
+        return;
+      }
+      const payload = {
+        id: DISPLAY_ROW_ID,
+        is_visible: false,
+        first_text: '',
+        second_text: '',
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await client.from('live_cards').upsert(payload, { onConflict: 'id' });
+      if (error) {
+        console.error(error);
+        setStatus('清空失敗，請確認資料表設定。');
+      } else {
+        setStatus('投影端已清空。');
+      }
+    }
+
+    async function refreshDisplay() {
+      const client = initSupabase();
+      if (!client) return;
+      const { data, error } = await client.from('live_cards').select('*').eq('id', DISPLAY_ROW_ID).maybeSingle();
+      if (error) {
+        console.error(error);
+        return;
+      }
+      paintDisplay(data);
+    }
+
+    function paintDisplay(data) {
+      const empty = document.getElementById('displayEmpty');
+      const wrap = document.getElementById('displayWrap');
+      const first = document.getElementById('displayFirst');
+      const second = document.getElementById('displaySecond');
+      const visible = data && data.is_visible;
+      if (!visible) {
+        empty.classList.remove('hidden');
+        wrap.classList.add('hidden');
+        first.textContent = '';
+        second.textContent = '';
+        return;
+      }
+      first.textContent = data.first_text || '';
+      second.textContent = data.second_text || '';
+      empty.classList.add('hidden');
+      wrap.classList.remove('hidden');
+    }
+
+    function subscribeDisplay() {
+      const client = initSupabase();
+      if (!client) return;
+      if (realtimeChannel) client.removeChannel(realtimeChannel);
+      realtimeChannel = client
+        .channel('live_cards_channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'live_cards' }, (payload) => {
+          paintDisplay(payload.new || null);
+        })
+        .subscribe();
+    }
+
+    function bindController() {
+      document.getElementById('supabaseUrl').value = state.supabaseUrl;
+      document.getElementById('supabaseKey').value = state.supabaseKey;
+
+      document.getElementById('supabaseUrl').addEventListener('input', (e) => {
+        state.supabaseUrl = e.target.value.trim();
+        saveState();
+      });
+      document.getElementById('supabaseKey').addEventListener('input', (e) => {
+        state.supabaseKey = e.target.value.trim();
+        saveState();
+      });
+
+      document.getElementById('addStage1Btn').addEventListener('click', () => {
+        state.stage1Items.push('新的第一格內容');
+        saveState();
+        renderAll();
+      });
+      document.getElementById('addStage2Btn').addEventListener('click', () => {
+        state.stage2Items.push('新的第二格內容');
+        saveState();
+        renderAll();
+      });
+
+      document.getElementById('showStage1Btn').addEventListener('click', () => showView('stage1'));
+      document.getElementById('showStage2Btn').addEventListener('click', () => showView('stage2'));
+      document.getElementById('showConfirmBtn').addEventListener('click', () => showView('confirm'));
+      document.getElementById('editFirstBtn').addEventListener('click', () => showView('stage1'));
+      document.getElementById('editSecondBtn').addEventListener('click', () => showView('stage2'));
+      document.getElementById('sendBtnTop').addEventListener('click', sendSelection);
+      document.getElementById('sendBtnBottom').addEventListener('click', sendSelection);
+      document.getElementById('clearScreenBtn').addEventListener('click', clearDisplay);
+    }
+
+    function renderAll() {
+      renderEditors();
+      renderCards();
+      renderConfirm();
+    }
+
+    function initController() {
+      document.getElementById('controllerApp').classList.remove('hidden');
+      document.getElementById('displayApp').classList.add('hidden');
+      bindController();
+      renderAll();
+      showView('stage1');
+    }
+
+    function initDisplay() {
+      document.getElementById('controllerApp').classList.add('hidden');
+      document.getElementById('displayApp').classList.remove('hidden');
+      const saved = loadState();
+      state.supabaseUrl = saved.supabaseUrl;
+      state.supabaseKey = saved.supabaseKey;
+
+      const configPanel = document.getElementById('displayConfigPanel');
+      const empty = document.getElementById('displayEmpty');
+      const wrap = document.getElementById('displayWrap');
+      const urlInput = document.getElementById('displaySupabaseUrl');
+      const keyInput = document.getElementById('displaySupabaseKey');
+      const saveBtn = document.getElementById('saveDisplayConfigBtn');
+
+      function startDisplay() {
+        configPanel.classList.add('hidden');
+        empty.classList.remove('hidden');
+        wrap.classList.add('hidden');
+        refreshDisplay();
+        subscribeDisplay();
+      }
+
+      if (!state.supabaseUrl || !state.supabaseKey) {
+        configPanel.classList.remove('hidden');
+        empty.classList.add('hidden');
+        wrap.classList.add('hidden');
+      } else {
+        startDisplay();
+      }
+
+      urlInput.value = state.supabaseUrl || '';
+      keyInput.value = state.supabaseKey || '';
+      saveBtn.addEventListener('click', () => {
+        state.supabaseUrl = urlInput.value.trim();
+        state.supabaseKey = keyInput.value.trim();
+        saveState();
+        startDisplay();
+      });
+    }
+
+    if (isDisplayMode) initDisplay();
+    else initController();
+  </script>
+</body>
+</html>
