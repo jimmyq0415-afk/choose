@@ -301,6 +301,7 @@
         </div>
         <div class="chip-row">
           <button class="btn-accent" id="sendBtnTop">確認送出</button>
+          <button class="btn-soft" id="syncItemsBtn">同步題庫</button>
           <button class="btn-danger" id="clearScreenBtn">清空投影</button>
         </div>
       </div>
@@ -373,7 +374,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'two_stage_selector_fixed_v3';
+    const STORAGE_KEY = 'two_stage_selector_fixed_v4';
     const DISPLAY_ROW_ID = 1;
     const params = new URLSearchParams(location.search);
     const isDisplayMode = params.get('mode') === 'display';
@@ -422,6 +423,13 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+
+    function normalizeItems(items, fallback) {
+      if (!Array.isArray(items)) return [...fallback];
+      const cleaned = items.map(v => String(v ?? '').trim()).filter(Boolean);
+      return cleaned.length ? cleaned : [...fallback];
     }
 
     function initSupabase() {
@@ -547,6 +555,54 @@
       if (which === 'confirm') confirmView.classList.remove('hidden');
     }
 
+
+    async function loadRemoteConfig() {
+      const client = initSupabase();
+      if (!client) return false;
+      const { data, error } = await client
+        .from('live_selection')
+        .select('stage1_items, stage2_items')
+        .eq('id', DISPLAY_ROW_ID)
+        .maybeSingle();
+      if (error) {
+        console.error(error);
+        return false;
+      }
+      if (data) {
+        state.stage1Items = normalizeItems(data.stage1_items, defaultData.stage1Items);
+        state.stage2Items = normalizeItems(data.stage2_items, defaultData.stage2Items);
+        if (state.selectedStage1 != null && state.selectedStage1 >= state.stage1Items.length) state.selectedStage1 = null;
+        if (state.selectedStage2 != null && state.selectedStage2 >= state.stage2Items.length) state.selectedStage2 = null;
+        saveState();
+      }
+      return true;
+    }
+
+    async function saveRemoteConfig(showStatus = true) {
+      const client = initSupabase();
+      if (!client) {
+        if (showStatus) setStatus('目前無法同步題庫，請確認 Supabase 設定。');
+        return false;
+      }
+      const payload = {
+        stage1_items: state.stage1Items,
+        stage2_items: state.stage2Items,
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await client
+        .from('live_selection')
+        .update(payload)
+        .eq('id', DISPLAY_ROW_ID)
+        .select();
+      if (error || !data || data.length === 0) {
+        console.error(error || 'config sync failed');
+        if (showStatus) setStatus('題庫同步失敗，請先更新 Supabase 資料表欄位。');
+        return false;
+      }
+      if (showStatus) setStatus('題庫已同步，換裝置也會保留。');
+      return true;
+    }
+
     async function sendSelection() {
       if (state.selectedStage1 == null || state.selectedStage2 == null) {
         setStatus('要先選完第一格和第二格，才能送出。');
@@ -561,6 +617,8 @@
         submitted: true,
         first_choice: state.stage1Items[state.selectedStage1],
         second_choice: state.stage2Items[state.selectedStage2],
+        stage1_items: state.stage1Items,
+        stage2_items: state.stage2Items,
         updated_at: new Date().toISOString()
       };
       let error = null;
@@ -669,6 +727,7 @@
       document.getElementById('sendBtnTop').addEventListener('click', sendSelection);
       document.getElementById('sendBtnBottom').addEventListener('click', sendSelection);
       document.getElementById('clearScreenBtn').addEventListener('click', clearDisplay);
+      document.getElementById('syncItemsBtn').addEventListener('click', () => saveRemoteConfig(true));
     }
 
     function renderAll() {
@@ -677,10 +736,11 @@
       renderConfirm();
     }
 
-    function initController() {
+    async function initController() {
       document.getElementById('controllerApp').classList.remove('hidden');
       document.getElementById('displayApp').classList.add('hidden');
       bindController();
+      await loadRemoteConfig();
       renderAll();
       showView('stage1');
     }
